@@ -1,11 +1,12 @@
 {
-    "editor.fontsize": 12,
+    "editor.fontsize": 10,
     "window.zoomLevel": 0.5,
-    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.fontSize": 10,
     "workbench.colorTheme": "Atom One Dark",
     "workbench.iconTheme": "vscode-icons",
     "files.associations": {
         "iostream": "cpp"
     },
+    "C_Cpp.errorSquiggles": "disabled",
 
 }
