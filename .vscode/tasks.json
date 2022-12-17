@@ -12,6 +12,7 @@
                 "-lstdc++",
                 "-o",
                 "./bin/Main.out",
+                "-lm",
             ]
         },
         {
