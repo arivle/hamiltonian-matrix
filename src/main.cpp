@@ -128,7 +128,7 @@ void write_csv(string filename, string colname, vector<complex<double>> vect, in
 
     for (int i = 0; i < nmat; i++)
     {
-        myFile<<vect[i];
+        myFile<<vect[i]<<"\n";
     }
     myFile.close();   
 
@@ -201,7 +201,7 @@ int main(int argc, char const *argv[])
         tau = dt * jj;
 
     }
-    write_csv("corrf.csv", "correlationF", corrF, nmat);
+    write_csv("corrf.txt", "correlationF", corrF, nmat);
     
     return 0;
 }
