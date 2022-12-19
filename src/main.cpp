@@ -4,6 +4,7 @@
 #include <random>
 #include <stdlib.h>
 #include <complex>
+#include <fstream>
 
 using namespace std;
 
@@ -108,6 +109,31 @@ vector<complex<double>> kinpropY(vector<complex<double>>& in, int b, int nx, int
 
 }
 
+complex<double> dot_product(vector<complex<double>> &a, vector<complex<double>> &b, int nmat){
+    complex<double> product = 0.0;
+    for (int i = 0; i < nmat; i++)
+    {
+        product = product + a[i] * b[i];
+
+    }
+    return product;
+    
+
+}
+
+void write_csv(string filename, string colname, vector<complex<double>> vect, int nmat){
+    ofstream myFile(filename);
+
+    myFile << colname<<"\n";
+
+    for (int i = 0; i < nmat; i++)
+    {
+        myFile<<vect[i];
+    }
+    myFile.close();   
+
+}
+
 int main(int argc, char const *argv[])
 {
     /*variable declaration*/
@@ -118,8 +144,8 @@ int main(int argc, char const *argv[])
     int ny = 4;
     // int nm = nx/2;
     int nmat = nx*nx;
-    float dx = Lx/nx;
-    float dy = Ly/ny;
+    double dx = Lx/nx;
+    double dy = Ly/ny;
     float dt = 0.02;
     float h = 0.01;
     /*just make my computational time shorter. please change this nstep as you need*/
@@ -147,26 +173,35 @@ int main(int argc, char const *argv[])
     }
     
     //this loop just for showing the array contents
-    cout<<"psi0: ";
-    for (int i=0; i<nmat; i++){
-        // cout<<"ini x "<<x[i]<<" ";
-        cout<<psi0[i]<< " ";
-    }
+    // cout<<"psi0: ";
+    // for (int i=0; i<nmat; i++){
+    //     // cout<<"ini x "<<x[i]<<" ";
+    //     cout<<psi0[i]<< " ";
+    // }
 
-    cout<<"psi0_conj: ";
-    for (int i=0; i<nmat; i++){
-        // cout<<"ini x "<<x[i]<<" ";
-        cout<<psi0_conj[i]<< " ";
-    }
+    // cout<<"psi0_conj: ";
+    // for (int i=0; i<nmat; i++){
+    //     // cout<<"ini x "<<x[i]<<" ";
+    //     cout<<psi0_conj[i]<< " ";
+    // }
 
     /*calculating the kinetics*/
-    // while (tau<ta)
-    // {
-    //     for (int kk = 0; kk < nx; kk++)
-    //     {
-    //         /* code */
-    //     }
-        
-    // }
+    while (tau<ta)
+    {
+        psi0 = kinpropX(psi0,0,nx,dt);
+        psi0 = kinpropX(psi0,1,nx,dt);
+        psi0 = kinpropY(psi0, 0,nx, ny, dt);
+        psi0 = kinpropY(psi0, 1,nx, ny, dt);
+
+        complex<double> cf0 = dot_product(psi0_conj, psi0, nmat);
+        complex<double> cf1 = cf0 * dx * dy;
+        corrF[jj + nta] = cf1;
+
+        jj+=1;
+        tau = dt * jj;
+
+    }
+    write_csv("corrf.csv", "correlationF", corrF, nmat);
+    
     return 0;
 }
