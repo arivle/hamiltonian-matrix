@@ -155,14 +155,25 @@ vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector
     int sy1 = 0;
     int sx2 = 0;
     int sy2 = 0;
+    //initialize the identity matrix
+    vector<vector<double> > identity;
+    identity = vector<vector<double> >(nmax, vector<double>(n, 0.0));
+
+    //set the diagonal
+    for (unsigned int i = 0; i < nmax; i++)
+    {
+        matrix[i][i] = 1;
+    }
+    
 
     double TEn = T*Kb;
     complex<double> potN = pot / psi0N;
     complex<double> bN = psi0N / TEn;
     complex<double> aN = 1/psi0N;
-
     complex<double> ct (cos(-dt * 1),0);
     complex<double> st (0, (-1 * sin(-dt*1)));
+
+    vector<complex<double> > fermiDirac_t2(nmat);
 
     for (int i = 0; i < nx; i++)
     {
@@ -214,14 +225,21 @@ vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector
             sy2 = j;
             fermiDirac_t1[sx2][sy2] = ct*fermiDirac[sx2][sy2] - st*fermiDirac[sx2+1][sy2];
             fermiDirac_t1[sx2+1][sy] = -ct*fermiDirac[sx2][sy2] + ct*fermiDirac[sx2+1][sy2];
+            sx2 = 0;
+            sy2 = 0;
         }
         
     }
-    
-    
-    
 
-    
+    // adding matrix identity to the fermiDirac_t2
+    for (int i = 0; i < nmax; i++)
+    {
+        for (int j = 0; j < count; j++)
+        {
+            fermiDirac_t2[i][j] = identity[i][j] + fermiDirac_t1[i][j];  
+        }
+        
+    }
 
 }
 
