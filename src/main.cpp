@@ -7,7 +7,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
-#include<cmath>
+#include <cmath>
+#include "lapacke.h"
 
 using namespace std;
 
@@ -144,7 +145,39 @@ complex<double> normalize_psi(vector<complex<double>> &a, int num, int nmat){
     return sum0;    
 }
 
-vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector<complex<double>>& fermiDirac, vector<complex<double>>& fermiDirac_t1, complex<double> psi0N, int nx, int ny, float dt, int nm){
+vector<complex<double>> inv(vector<complex<double>>&mat, int nmat){
+    vector<complex<double> > inverse(nmat);
+    using cfloat = __complex__ float;
+
+    cfloat* arr = new cfloat[nmat*nmat];
+    for (int i = 0; i < nmat; i++)
+    {
+        for (int j = 0; j < nmat; j++)
+        {
+            int idx = i*nmat + j;
+            arr[idx] = (mat[i][j]).real() + _Complex_I*(mat[i][j]).imag();
+        }
+    }
+
+    int* IPIV = new int[nmat];
+    LAPACKE_cgetrf(LAPACK_ROW_MAJOR, nmat, nmat, arr, nmat, IPIV); 
+    LAPACKE_cgetri(LAPACK_ROW_MAJOR, nmat, arr, nmat, IPIV);
+    for (int i = 0; i < nmat; i++)
+    {
+        for (int j = 0; j < nmat; j++)
+        {
+            int idx = i*nmat+j;
+            inverse[i][j] = arr[idx];
+        }
+    }
+    delete [] IPIV;
+    delete [] arr;
+
+    return inverse;    
+
+}
+
+vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector<complex<double>>& fermiDirac, vector<complex<double>>& fermiDirac_t1, complex<double> psi0N, int nx, int ny, float dt, int nm, int nmat){
     int T = 300;
     double Kb = 0.695;
     int pot = 0;
@@ -157,12 +190,12 @@ vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector
     int sy2 = 0;
     //initialize the identity matrix
     vector<vector<double> > identity;
-    identity = vector<vector<double> >(nmax, vector<double>(n, 0.0));
+    identity = vector<vector<double> >(nmat, vector<double>(n, 0.0));
 
     //set the diagonal
-    for (unsigned int i = 0; i < nmax; i++)
+    for (unsigned int i = 0; i < nmat; i++)
     {
-        matrix[i][i] = 1;
+        identity[i][i] = 1;
     }
     
 
@@ -172,8 +205,12 @@ vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector
     complex<double> aN = 1/psi0N;
     complex<double> ct (cos(-dt * 1),0);
     complex<double> st (0, (-1 * sin(-dt*1)));
+    complex<double> linalg_norm;
 
     vector<complex<double> > fermiDirac_t2(nmat);
+    vector<complex<double> > invMat(nmat);
+    vector<complex<double> > invMat_t(nmat);
+    vector<complex<double> > psi1_t(nmat);
 
     for (int i = 0; i < nx; i++)
     {
@@ -232,7 +269,7 @@ vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector
     }
 
     // adding matrix identity to the fermiDirac_t2
-    for (int i = 0; i < nmax; i++)
+    for (int i = 0; i < nmat; i++)
     {
         for (int j = 0; j < count; j++)
         {
@@ -240,6 +277,68 @@ vector<complex<double>> fermi(int ff, int c, vector<complex<double>>& in, vector
         }
         
     }
+    invMat = inv(fermiDirac_t2, nmat);
+
+    if (ff==0)
+    {
+        if (c==0)
+        {
+            for (int i =0; i<nmat; i++)
+            {
+                invMat_t[i]=invMat[i];
+            }
+        }
+        else if (c==1)
+        {
+            for (int i = 0; i < nmat; i++)
+            {
+                invMat_t[i] = conj(invMat[i]);
+            }
+            
+        }
+        
+    }
+    else if (ff == 1)
+    {
+        for (int i = 0; i < nmat; i++)
+        {
+            for (int j = 0; j < nmat; j++)
+            {
+                invMat_t[i][j] = identity[i][j] - invMat[i][j];
+            }
+            
+        }
+        
+    }
+    /*Multiplication (1-F(H-mu)^-1) with psi*/
+    for (int i = 0; i < nmat; i++)
+    {
+        for (int j = 0; j < nmat; j++)
+        {
+            psi1_t[i][j] = invMat_t[i][j] * in[i][j];
+        }
+        
+    }
+
+    /*normalisasi*/
+    for (int i = 0; i < nmat; i++)
+    {
+        for (int j = 0; j < nmat; j++)
+        {
+            linalg_norm = linalg_norm + (psi1_t[i][j]*psi1_t[i][j]);
+        }
+        
+    }
+    linalg_norm = sqrt(linalg_norm);
+    complex<double> faktorNormalisasi = 1/linalg_norm * sqrt((dx*dy));
+    for (int i = 0; i < nmat; i++)
+    {
+        psi1_t[i] = psi1_t[i] * faktorNormalisasi;
+    }
+
+    return psi1_t;
+        
+    
 
 }
 
@@ -337,8 +436,8 @@ int main(int argc, char const *argv[])
         tau = dt * jj;
 
     }
-    complex<double> matrix_fermi = fermi(1, 0, corrF, fermiDirac, fermiDirac_t1, psi0N, nx, ny, dt, nm);
-    write_txt("corrf.txt", corrF, nmat);
+    complex<double> matrix_fermi = fermi(1, 0, corrF, fermiDirac, fermiDirac_t1, psi0N, nx, ny, dt, nm, nmat);
+    write_txt("matrix_fermi.txt", matrix_fermi, nmat);
     
     return 0;
 }
